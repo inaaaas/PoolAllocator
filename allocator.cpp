@@ -2,7 +2,7 @@
 
 template <typename T>
 PoolAllocator<T>::PoolAllocator(std::size_t capacity) 
-        : m_size(capacity), freeSlots(nullptr), availableSlots(size) {
+        : m_size(capacity), freeSlots(nullptr), availableSlots(capacity) {
             if (m_size == 0) {
                 throw std::runtime_error("size must be greater than zero");
             }
@@ -11,11 +11,11 @@ PoolAllocator<T>::PoolAllocator(std::size_t capacity)
             std::size_t slot_size = sizeof(T) > sizeof(void*) ? sizeof(T) : sizeof(void*);
             std::size_t size = slot_size * capacity;
 
-            memory = ::operator new(size, std::align_val_t(allignof(T)));
+            memory = ::operator new(size, std::align_val_t(alignof(T)));
             //aranc construction miayn malloc e anum
 
 
-            uint8_t* ptr = static_cast<uint8_t>(memory);
+            uint8_t* ptr = static_cast<uint8_t*>(memory);
             for (std::size_t i = 0; i < capacity; ++i) {
                 void* slot = ptr + i * slot_size;
                 *reinterpret_cast<void**>(slot) = (i + 1 < capacity) ? (ptr + (i + 1) * slot_size) : nullptr;
@@ -51,14 +51,17 @@ template <typename... Args>
         
 template <typename T>
 void PoolAllocator<T>::destroy(T* ptr){
-    ptr->~T();
-    ptr = nullptr;
+    if (ptr) { 
+        ptr->~T();
+        deallocate(ptr);
+    }
+  
 }
 
 template <typename T>
 void PoolAllocator<T>::deallocate(T* ptr){
     if (!ptr) return;
-    destroy(ptr);
+    //destroy(ptr);
 
     std::lock_guard<std::mutex> lock(mtx);
     *reinterpret_cast<void**>(ptr) = freeSlots;
