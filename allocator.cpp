@@ -34,7 +34,7 @@ T* PoolAllocator<T>::allocate(){
     if (!freeSlots) return nullptr;
 
     void* slot = freeSlots;
-    freeSlots = reinterpret_cast<void**>(slot);
+    freeSlots = *reinterpret_cast<void**>(slot);
     --availableSlots;
     return static_cast<T*>(slot);
 }
@@ -42,11 +42,11 @@ T* PoolAllocator<T>::allocate(){
 template <typename T>
 template <typename... Args>
  T* PoolAllocator<T>::construct(Args&&... args){
-    T& m_memory = allocate();
-    if (!m_memory) {
+    T* mem = allocate();
+    if (!mem) {
         throw std::bad_alloc();
     }
-    return new(m_memory) T(std::forward<Args>(args)...);
+    return new(mem) T(std::forward<Args>(args)...);
 }
         
 template <typename T>
